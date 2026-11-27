@@ -1,14 +1,10 @@
-name: Build Rogue Piece debug APK
+name: Build Android APK
 
 on:
   workflow_dispatch:
   push:
     branches:
       - main
-      - copilot/apk-build
-    paths:
-      - 'rogue-piece_-shells-town.4.zip'
-      - '.github/workflows/build-apk.yml'
 
 permissions:
   contents: read
@@ -16,85 +12,46 @@ permissions:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
+      - name: Descargar código
         uses: actions/checkout@v4
 
-      - name: Extract Vite project from ZIP
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path, PurePosixPath
-          from zipfile import ZipFile
-
-          archive = Path('rogue-piece_-shells-town.4.zip')
-          target = Path('project').resolve()
-          target.mkdir(parents=True, exist_ok=True)
-          with ZipFile(archive) as zf:
-              for item in zf.infolist():
-                  name = PurePosixPath(item.filename)
-                  if name.is_absolute() or '..' in name.parts:
-                      raise SystemExit(f'Unsafe ZIP entry: {item.filename}')
-                  destination = (target / item.filename).resolve()
-                  if target not in destination.parents and destination != target:
-                      raise SystemExit(f'Unsafe ZIP entry: {item.filename}')
-              zf.extractall(target)
-          PY
-
-          project_dir=$(find project -maxdepth 6 -type f -name package.json -not -path '*/node_modules/*' -printf '%h\n' | head -n 1)
-          if [ -z "$project_dir" ]; then
-            echo 'No se encontró package.json dentro del ZIP.'
-            exit 1
-          fi
-          echo "PROJECT_DIR=$project_dir" >> "$GITHUB_ENV"
-          echo "Proyecto encontrado en: $project_dir"
-
-      - name: Setup Node.js
+      - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Build Vite app and prepare Capacitor
+      - name: Compilar aplicación web y preparar Android
         run: |
-          cd "$PROJECT_DIR"
-          npm install
-          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
+          npm install --legacy-peer-deps
+          npm install --save-dev esbuild@0.28.2 --legacy-peer-deps
+          npm install @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7 --legacy-peer-deps
           npm run build
-          test -f dist/index.html
-          cat > capacitor.config.json <<'EOF'
-          {
-            "appId": "com.roguepiece.app",
-            "appName": "Rogue Piece",
-            "webDir": "dist",
-            "bundledWebRuntime": false
-          }
-          EOF
           npx cap add android
           npx cap sync android
-          echo "ANDROID_DIR=$PROJECT_DIR/android" >> "$GITHUB_ENV"
 
-      - name: Setup Java
+      - name: Configurar Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: "21"
 
-      - name: Setup Android SDK
+      - name: Configurar Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Setup Gradle
+      - name: Configurar Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: 8.7
+          gradle-version: 8.11.1
 
-      - name: Build debug APK
-        run: |
-          cd "$ANDROID_DIR"
-          gradle assembleDebug --stacktrace
+      - name: Crear APK
+        run: gradle --no-daemon -p android assembleDebug
 
-      - name: Upload debug APK
+      - name: Subir APK
         uses: actions/upload-artifact@v4
         with:
           name: Rogue-Piece-debug-apk
-          path: ${{ env.ANDROID_DIR }}/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
