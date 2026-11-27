@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Rogue Piece v2.2</title>
+  <meta name="description" content="Rogue Piece v2.2 — Arena roguelike de acción con 24 personajes jugables, 15 oleadas, 3 jefes y el Primer Wanted: Buggy el Payaso." />
+  <meta property="og:title" content="Rogue Piece v2.2" />
+  <meta property="og:description" content="Rogue Piece v2.2 — Arena roguelike de acción con 24 personajes jugables, 15 oleadas, 3 jefes y el Primer Wanted: Buggy el Payaso." />
+  <meta property="og:type" content="website" />
+  <script type="module" src="/src/main.tsx"></script>
+</head>
+<body data-state="menu">
+
+  <!-- OVERLAY OBLIGATORIO DE ORIENTACIÓN VERTICAL -->
+  <div id="orientation-overlay">
+    <div class="icon">📱</div>
+    <h2 class="text-outline" style="font-size: 28px; color: #F5C518; margin-bottom: 10px;">GIRA TU TELÉFONO 🔄</h2>
+    <p class="text-outline-sm" style="color: #F4E4C1; font-size: 16px; max-width: 340px; line-height: 1.4; margin-bottom: 22px;">
+      Este juego requiere pantalla horizontal (<b>Landscape</b>) para jugar cómodamente con ambos pulgares.
+    </p>
+    <button id="btn-force-landscape" class="btn-3d btn-gold interactive text-outline-sm" style="padding: 12px 26px; font-size: 15px;">
+      Ya lo giré a horizontal ▶
+    </button>
+  </div>
+
+  <!-- CONTENEDOR PRINCIPAL -->
+  <div id="app-container">
+    <div id="game-wrapper">
+      <canvas id="gameCanvas" width="1280" height="720"></canvas>
+      <!-- Viñeta roja en pantalla cuando Killer activa Killer Frenzy -->
+      <div id="frenzy-vignette"></div>
+
+      <!-- CAPA HUD Y PANTALLAS -->
+      <div id="ui-layer">
+        
+        <!-- HUD EN COMBATE -->
+        <div id="hud-combat">
+          <!-- Arriba Izquierda: Retrato, Rareza, HP y Recursos Específicos -->
+          <div class="hud-top-left">
+            <div id="hud-portrait" class="char-portrait">👒</div>
+            <div class="hp-container">
+              <div class="char-name-row">
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span id="hud-char-name" class="char-name text-outline-sm">LUFFY</span>
+                  <span id="hud-rarity-badge" class="hud-rarity-pill text-outline-sm">COMÚN</span>
+                </div>
+                <span id="hud-hp-text" class="hp-text text-outline-sm">150/150</span>
+              </div>
+              <div class="hp-bar-outer">
+                <div id="hud-hp-fill" class="hp-bar-fill"></div>
+                <div class="hp-segments">
+                  <div></div><div></div><div></div><div></div><div></div>
+                  <div></div><div></div><div></div><div></div><div></div>
+                </div>
+              </div>
+              <div id="char-hud-slot"></div>
+            </div>
+          </div>
+
+          <!-- Minimapa Táctico (Mundo 2560x1440) -->
+          <div id="minimap-container">
+            <canvas id="minimapCanvas" width="112" height="64"></canvas>
+          </div>
+
+          <!-- Arriba Centro: Oleada y Enemigos -->
+          <div class="hud-top-center">
+            <div id="hud-wave-text" class="wave-badge text-outline-sm">OLEADA 1 / 15</div>
+            <div id="hud-enemies-text" class="enemies-left text-outline-sm">Enemigos restantes: 8</div>
+          </div>
+
+          <!-- Banner de Transición de Fase / Escenario -->
+          <div id="stage-banner" aria-live="polite">
+            <div id="stage-banner-kicker" class="stage-banner-kicker text-outline-sm">FASE 2 · OLEADAS 6–10</div>
+            <div id="stage-banner-title" class="stage-banner-title text-outline">PATIO DE LA BASE MARINA</div>
+            <div id="stage-banner-sub" class="stage-banner-sub text-outline-sm">La guarnición del Capitán Morgan entra en alerta</div>
+          </div>
+
+          <!-- Barra de Jefe (Alvida / Morgan / Wanted Buggy) -->
+          <div id="boss-hud">
+            <div id="boss-title" class="boss-title text-outline-sm">⚓ ALVIDA, LA MAZA DE HIERRO ⚓</div>
+            <div class="boss-bar-outer">
+              <div id="boss-hp-fill" class="boss-bar-fill"></div>
+              <div class="boss-phase-mark" style="left: 60%;"></div>
+              <div class="boss-phase-mark" style="left: 30%;"></div>
+            </div>
+          </div>
+
+          <!-- Cinemática de Entrada de Jefe (Primer Wanted: Buggy) -->
+          <div id="boss-cinematic-overlay" aria-hidden="true">
+            <div class="cinematic-dialogue-card">
+              <div class="cinematic-avatar" aria-hidden="true">
+                <svg viewBox="0 0 40 40" width="38" height="38">
+                  <polygon points="6,15 20,4 34,15" fill="#FF5252" stroke="#B71C1C" stroke-width="1.5" />
+                  <circle cx="20" cy="4" r="3" fill="#FFD54F" />
+                  <circle cx="20" cy="23" r="13" fill="#FFF9C4" stroke="#5D4037" stroke-width="1.5" />
+                  <line x1="13" y1="17" x2="17" y2="21" stroke="#1976D2" stroke-width="1.8" />
+                  <line x1="17" y1="17" x2="13" y2="21" stroke="#1976D2" stroke-width="1.8" />
+                  <line x1="23" y1="17" x2="27" y2="21" stroke="#1976D2" stroke-width="1.8" />
+                  <line x1="27" y1="17" x2="23" y2="21" stroke="#1976D2" stroke-width="1.8" />
+                  <circle cx="20" cy="24" r="4.5" fill="#D32F2F" stroke="#8B0000" stroke-width="1.2" />
+                  <ellipse cx="18.5" cy="22.5" rx="1.2" ry="0.8" fill="#FF8A80" />
+                  <path d="M14,29 Q20,35 26,29" fill="none" stroke="#D32F2F" stroke-width="2" stroke-linecap="round" />
+                </svg>
+              </div>
+              <div class="cinematic-content">
+                <div class="cinematic-header">
+                  <span class="cinematic-wanted-tag">☠ PRIMER WANTED · 15,000,000 B</span>
+                  <span class="cinematic-speaker text-outline-sm">BUGGY EL PAYASO</span>
+                </div>
+                <p id="cinematic-dialogue-text" class="cinematic-text">
+                  «¡Gyahaha! ¡Bienvenidos al Gran Circo de Orange Town!»
+                </p>
+              </div>
+              <button id="btn-skip-cinematic" class="btn-3d btn-wood btn-skip-cinematic interactive text-outline-sm" type="button">
+                Saltar ▶
+              </button>
+            </div>
+          </div>
+
+          <!-- Arriba Derecha: Berries y Pausa -->
+          <div class="hud-top-right">
+            <div id="hud-berry-box" class="berry-counter text-outline-sm">
+              <span class="berry-coin">B</span>
+              <span id="hud-berries">0</span>
+            </div>
+            <button id="btn-settings" class="btn-3d btn-hud-top interactive text-outline-sm">⚙️</button>
+            <button id="btn-pause" class="btn-3d btn-hud-top interactive text-outline-sm">⏸</button>
+          </div>
+
+          <!-- Contenedor extra de HUD por personaje -->
+          <div id="char-hud-extra" style="position:absolute;inset:0;pointer-events:none;"></div>
+
+          <!-- Tooltip del Tutorial Rápido -->
+          <div id="tutorial-tooltip" class="text-outline-sm"></div>
+
+          <!-- Abajo Izquierda: Aro guía del Joystick -->
+          <div class="joystick-hint">MOVER</div>
+
+          <!-- Abajo Derecha: Cluster de Acción 3D (Pulgar derecho) -->
+          <div id="action-cluster" class="action-cluster theme-luffy">
+            <!-- H1 -->
+            <div id="wrap-h1" class="action-btn-wrapper">
+              <button id="btn-h1" class="btn-3d btn-skill interactive">
+                <span id="icon-h1">👊</span>
+                <div id="cd-h1" class="cd-overlay text-outline-sm"></div>
+                <div id="flash-h1" class="btn-flash"></div>
+              </button>
+              <span id="lbl-h1" class="skill-label text-outline-sm">Gatling</span>
+            </div>
+
+            <!-- H2 -->
+            <div id="wrap-h2" class="action-btn-wrapper">
+              <button id="btn-h2" class="btn-3d btn-skill interactive">
+                <span id="icon-h2">💥</span>
+                <div id="lock-h2" class="lock-badge-overlay text-outline-sm">🔒</div>
+                <div id="cd-h2" class="cd-overlay text-outline-sm"></div>
+                <div id="flash-h2" class="btn-flash"></div>
+              </button>
+              <span id="lbl-h2" class="skill-label text-outline-sm">Bazooka</span>
+            </div>
+
+            <!-- H3 -->
+            <div id="wrap-h3" class="action-btn-wrapper">
+              <button id="btn-h3" class="btn-3d btn-skill interactive">
+                <span id="icon-h3">🌪️</span>
+                <div id="lock-h3" class="lock-badge-overlay text-outline-sm">🔒</div>
+                <div id="cd-h3" class="cd-overlay text-outline-sm"></div>
+                <div id="flash-h3" class="btn-flash"></div>
+              </button>
+              <span id="lbl-h3" class="skill-label text-outline-sm">Storm</span>
+            </div>
+
+            <!-- Dash -->
+            <div id="wrap-dash" class="action-btn-wrapper">
+              <button id="btn-dash" class="btn-3d interactive">
+                <span>💨</span>
+                <div id="dash-charges-badge" class="dash-charges text-outline-sm" style="display:none;">2</div>
+                <div id="cd-dash" class="cd-overlay text-outline-sm"></div>
+                <div id="flash-dash" class="btn-flash"></div>
+              </button>
+              <span class="skill-label text-outline-sm">Dash</span>
+            </div>
+
+            <!-- Ataque Principal -->
+            <div id="wrap-attack" class="action-btn-wrapper">
+              <button id="btn-attack" class="btn-3d interactive">
+                <span id="icon-attack">👊</span>
+                <div id="cd-attack" class="cd-overlay text-outline-sm"></div>
+                <div id="flash-attack" class="btn-flash"></div>
+              </button>
+              <span class="skill-label text-outline-sm">Atacar</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 1. PANTALLA DE INICIO (PORTADA GRAND LINE · ROGUE PIECE v2.2) -->
+        <div id="screen-menu" class="screen-modal active">
+          <div class="menu-backdrop" aria-hidden="true">
+            <svg class="menu-seascape-svg" viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice">
+              <defs>
+                <linearGradient id="menuSkyGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#070E1C" />
+                  <stop offset="52%" stop-color="#112240" />
+                  <stop offset="82%" stop-color="#1F3B63" />
+                  <stop offset="100%" stop-color="#D97724" stop-opacity="0.48" />
+                </linearGradient>
+                <radialGradient id="menuSunGrad" cx="50%" cy="56%" r="36%">
+                  <stop offset="0%" stop-color="#FDE68A" stop-opacity="0.65" />
+                  <stop offset="45%" stop-color="#F59E0B" stop-opacity="0.28" />
+                  <stop offset="100%" stop-color="#F59E0B" stop-opacity="0" />
+                </radialGradient>
+              </defs>
+              <rect width="1280" height="720" fill="url(#menuSkyGrad)" />
+              <rect width="1280" height="720" fill="url(#menuSunGrad)" />
+              <!-- Rosa de los vientos náutica sutil -->
+              <g transform="translate(640,340)" opacity="0.14" stroke="#F5C518" fill="none">
+                <circle r="245" stroke-width="1.5" stroke-dasharray="10 8" />
+                <circle r="190" stroke-width="1" />
+                <path d="M0,-270 L18,-22 L270,0 L22,18 L0,270 L-18,22 L-270,0 L-22,-18 Z" stroke-width="1.2" />
+              </g>
+              <!-- Estrellas del crepúsculo -->
+              <g fill="#FFF8E1" opacity="0.45">
+                <circle cx="140" cy="95" r="1.8" /><circle cx="290" cy="62" r="1.4" />
+                <circle cx="460" cy="110" r="1.6" /><circle cx="835" cy="84" r="1.8" />
+                <circle cx="990" cy="58" r="1.4" /><circle cx="1140" cy="128" r="2.0" />
+                <circle cx="210" cy="185" r="1.2" /><circle cx="1065" cy="195" r="1.5" />
+              </g>
+              <!-- Silueta de galeón pirata al fondo izquierdo y carpa de Orange Town a la derecha -->
+              <g fill="#08111F" opacity="0.72">
+                <path d="M120,492 L245,492 L225,522 L138,522 Z" />
+                <rect x="176" y="405" width="6" height="90" />
+                <path d="M182,412 Q228,438 182,472 Z" />
+                <path d="M174,424 Q142,445 174,468 Z" />
+                <polygon points="1030,506 1095,442 1160,506" />
+                <polygon points="1095,442 1118,506 1072,506" fill="#18273F" />
+                <rect x="975" y="485" width="42" height="24" />
+              </g>
+              <!-- Olas del Grand Line -->
+              <path d="M0,515 Q160,486 320,514 T640,512 T960,516 T1280,508 L1280,720 L0,720 Z" fill="#0D223D" opacity="0.9" />
+              <path d="M0,565 Q190,536 380,566 T760,562 T1140,566 L1280,556 L1280,720 L0,720 Z" fill="#09192E" />
+              <path d="M0,624 Q220,598 440,626 T880,622 T1280,618 L1280,720 L0,720 Z" fill="#06101F" />
+              <path d="M0,515 Q160,486 320,514 T640,512 T960,516 T1280,508" fill="none" stroke="#F5C518" stroke-opacity="0.28" stroke-width="2" />
+            </svg>
+          </div>
+
+          <div class="start-card">
+            <!-- Emblema SVG exclusivo: Calavera Sombrero de Paja & Espadas Cruzadas -->
+            <div class="start-crest" aria-hidden="true">
+              <svg viewBox="0 0 120 88" width="96" height="70">
+                <!-- Espadas cruzadas -->
+                <g stroke="#CBD5E1" stroke-width="4.5" stroke-linecap="round">
+                  <line x1="22" y1="74" x2="98" y2="14" />
+                  <line x1="98" y1="74" x2="22" y2="14" />
+                </g>
+                <g stroke="#F5C518" stroke-width="5" stroke-linecap="round">
+                  <line x1="18" y1="68" x2="30" y2="78" />
+                  <line x1="102" y1="68" x2="90" y2="78" />
+                </g>
+                <!-- Calavera -->
+                <circle cx="60" cy="48" r="20" fill="#F8FAFC" stroke="#0F172A" stroke-width="3" />
+                <rect x="50" y="61" width="20" height="10" rx="3" fill="#F8FAFC" stroke="#0F172A" stroke-width="2.5" />
+                <circle cx="52" cy="49" r="4.5" fill="#0F172A" />
+                <circle cx="68" cy="49" r="4.5" fill="#0F172A" />
+                <polygon points="60,54 57,59 63,59" fill="#0F172A" />
+                <!-- Sombrero de paja -->
+                <path d="M35,36 Q60,12 85,36 Z" fill="#F5C518" stroke="#7A5600" stroke-width="2.5" />
+                <path d="M37,33 Q60,29 83,33 L85,37 Q60,33 35,37 Z" fill="#D32F2F" />
+                <ellipse cx="60" cy="37" rx="33" ry="6.5" fill="#F5C518" stroke="#7A5600" stroke-width="2.5" />
+              </svg>
+            </div>
+
+            <div class="start-eyebrow">GRAND LINE ARENA · v2.2</div>
+            <h1 class="game-title start-title text-outline">ROGUE PIECE</h1>
+            <p class="game-subtitle start-subtitle">
+              Sobrevive a 15 oleadas desde Shells Town hasta Orange Town, domina el Haki y derrota al Primer Wanted.
+            </p>
+            <div class="start-actions">
+              <button id="btn-start-game" data-start="true" class="btn-3d btn-gold btn-start-hero text-outline interactive">
+                ENTRAR AL LOBBY
+              </button>
+            </div>
+            <div class="start-meta-line">
+              24 Personajes · 15 Oleadas · 3 Jefes · Primer Wanted: Buggy
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. LOBBY PRE-PARTIDA (FACCIONES, SHOWCASE ACTIVO, ROSTER Y STATS) -->
+        <div id="screen-select" class="screen-modal">
+          <header class="lobby-topbar">
+            <div class="lobby-brand">
+              <span class="lobby-brand-title text-outline-sm">ROGUE PIECE</span>
+              <span class="lobby-brand-sep" aria-hidden="true">·</span>
+              <span class="lobby-brand-ver">v2.2</span>
+            </div>
+
+            <div class="faction-tabs" role="tablist" aria-label="Selector de facción">
+              <button id="tab-faction-pirates" class="faction-tab active interactive" role="tab" aria-selected="true" data-faction="pirates">
+                Piratas
+              </button>
+              <button id="tab-faction-marines" class="faction-tab interactive" role="tab" aria-selected="false" data-faction="marines">
+                Marines
+              </button>
+            </div>
+
+            <div class="lobby-topbar-actions">
+              <button id="btn-lobby-stats" class="btn-lobby-stats interactive" type="button">
+                Estadísticas
+              </button>
+            </div>
+          </header>
+
+          <div class="lobby-body">
+            <!-- Columna izquierda: Tarjeta Showcase del personaje activo -->
+            <section id="showcase-card" class="showcase-card rarity-novato" aria-live="polite">
+              <div class="showcase-header">
+                <div class="showcase-avatar-frame">
+                  <canvas id="showcase-preview-canvas" width="76" height="76"></canvas>
+                </div>
+                <div class="showcase-identity">
+                  <div id="showcase-meta" class="showcase-meta">NOVATO · Tanque / Luchador</div>
+                  <h2 id="showcase-name" class="showcase-name text-outline-sm">LUFFY</h2>
+                  <div id="showcase-epithet" class="showcase-epithet">«Sombrero de Paja»</div>
+                </div>
+              </div>
+
+              <div id="showcase-stats" class="showcase-stats"></div>
+              <div id="showcase-skills" class="showcase-skills"></div>
+              <div id="showcase-kit" class="showcase-kit"></div>
+
+              <button id="btn-lobby-play" class="btn-3d btn-gold btn-lobby-play text-outline-sm interactive" type="button">
+                JUGAR
+              </button>
+            </section>
+
+            <!-- Columna derecha: Roster de facción -->
+            <section class="lobby-roster-pane">
+              <div id="roster-pirates" class="roster-panel active">
+                <div class="roster-panel-head">
+                  <span class="roster-heading">Piratas disponibles</span>
+                  <span id="roster-pirates-count" class="roster-sub">21 personajes · Toca para equipar</span>
+                </div>
+                <div id="pirates-roster-grid" class="pirates-roster-grid"></div>
+              </div>
+
+              <div id="roster-marines" class="roster-panel" hidden>
+                <div class="roster-panel-head">
+                  <span class="roster-heading">Marines disponibles</span>
+                  <span id="roster-marines-count" class="roster-sub">3 Almirantes · Toca para equipar</span>
+                </div>
+                <div id="marines-roster-grid" class="pirates-roster-grid"></div>
+                <div class="marines-upcoming-note">
+                  <span>Próxima actualización: Oficiales y Capitanes de la Marina jugables.</span>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <!-- 2B. PANEL LIGERO DE ESTADÍSTICAS -->
+        <div id="modal-stats" class="screen-modal" hidden>
+          <div class="stats-modal-panel">
+            <div class="stats-modal-head">
+              <div>
+                <div class="stats-modal-kicker">ROGUE PIECE · v2.2</div>
+                <h2 class="stats-modal-title text-outline-sm">Estadísticas</h2>
+              </div>
+              <button id="btn-close-stats" class="btn-3d btn-wood btn-stats-close text-outline-sm interactive" type="button">
+                Cerrar
+              </button>
+            </div>
+            <div class="stats-modal-grid">
+              <div class="stats-section">
+                <div class="stats-section-title">Progreso y Carrera</div>
+                <div id="stats-career-rows" class="stats-rows"></div>
+              </div>
+              <div class="stats-section">
+                <div class="stats-section-title">Personaje en Uso</div>
+                <div id="stats-active-rows" class="stats-rows"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. PANTALLA DE MEJORAS ROGUELIKE (MODO SEGURO DE 3 CAPAS) -->
+        <div id="screen-upgrades" class="screen-modal">
+          <h2 class="text-outline" style="font-size: clamp(22px, 3vw, 30px); color: #F5C518; margin-bottom: 4px;">¡OLEADA SUPERADA!</h2>
+          <p id="upgrade-subtitle" class="text-outline-sm" style="font-size: 13.5px; color: #F4E4C1; margin-bottom: 12px;">Toca una mejora para seleccionarla y confirma</p>
+          <div id="upgrade-cards-container" class="cards-row"></div>
+          <button id="btn-confirm-upgrade" class="btn-3d btn-green text-outline-sm">CONFIRMAR</button>
+          <div id="next-wave-preview" class="synergy-banner" style="display:none;"></div>
+        </div>
+
+        <!-- 4. PANTALLA DE PAUSA -->
+        <div id="screen-pause" class="screen-modal">
+          <h2 class="game-title text-outline" style="font-size: 38px;">PAUSA</h2>
+          <p id="pause-stats" class="text-outline-sm" style="margin-bottom: 24px; color: #F4E4C1; font-size: 14px; text-align: center;"></p>
+          <div style="display: flex; gap: 16px;">
+            <button id="btn-resume" class="btn-3d btn-gold text-outline-sm" style="padding: 14px 32px; font-size: 18px;">CONTINUAR</button>
+            <button id="btn-quit" class="btn-3d btn-wood text-outline-sm" style="padding: 14px 28px; font-size: 18px;">SALIR</button>
+          </div>
+        </div>
+
+        <!-- 4B. MODAL DE CONFIGURACIÓN (⚙️) -->
+        <div id="screen-settings" class="screen-modal">
+          <div class="settings-panel">
+            <h2 class="text-outline" style="font-size: 26px; color: #F5C518; text-align: center;">⚙️ CONFIGURACIÓN</h2>
+            
+            <div class="setting-row">
+              <div style="display:flex; justify-content:space-between;">
+                <span>🔊 Volumen SFX</span>
+                <span id="lbl-sfx-vol">80%</span>
+              </div>
+              <input id="slider-sfx" type="range" min="0" max="100" value="80">
+            </div>
+
+            <div class="setting-row">
+              <div style="display:flex; justify-content:space-between;">
+                <span>🎵 Volumen Música</span>
+                <span id="lbl-music-vol">55%</span>
+              </div>
+              <input id="slider-music" type="range" min="0" max="100" value="55">
+            </div>
+
+            <div class="setting-row-inline">
+              <span>📳 Vibración Háptica</span>
+              <button id="btn-toggle-vibe" class="btn-3d btn-gold text-outline-sm" style="padding: 8px 18px; font-size: 14px;">ACTIVADA</button>
+            </div>
+
+            <div id="restart-confirm-box" style="display:none; background: rgba(200,16,46,0.25); border: 1.5px solid #FF5252; border-radius: 10px; padding: 10px; text-align: center;">
+              <div style="font-size: 13px; font-weight: 800; margin-bottom: 8px;">¿Seguro que quieres reiniciar la partida?</div>
+              <div style="display: flex; gap: 10px; justify-content: center;">
+                <button id="btn-confirm-restart" class="btn-3d btn-gold text-outline-sm" style="padding: 8px 18px; font-size: 13px;">SÍ, REINICIAR</button>
+                <button id="btn-cancel-restart" class="btn-3d btn-wood text-outline-sm" style="padding: 8px 18px; font-size: 13px;">NO</button>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-top: 6px;">
+              <button id="btn-open-restart" class="btn-3d btn-wood text-outline-sm" style="flex:1; padding: 12px; font-size: 15px;">🔄 Reiniciar</button>
+              <button id="btn-close-settings" class="btn-3d btn-gold text-outline-sm" style="flex:1; padding: 12px; font-size: 15px;">Cerrar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. GAME OVER -->
+        <div id="screen-gameover" class="screen-modal">
+          <h2 class="game-title text-outline" style="color: #FF5252;">DERROTADO</h2>
+          <p id="gameover-info" class="game-subtitle text-outline-sm">Has caído en combate...</p>
+          <button id="btn-retry" class="btn-3d btn-gold text-outline-sm" style="padding: 16px 44px; font-size: 20px;">REINTENTAR</button>
+        </div>
+
+        <!-- 6. VICTORIA -->
+        <div id="screen-victory" class="screen-modal">
+          <div style="font-size: 44px; margin-bottom: 4px;">🏴‍☠️☀️</div>
+          <h2 class="game-title text-outline" style="color: #F5C518;">¡VICTORIA PIRATA!</h2>
+          <p id="victory-info" class="game-subtitle text-outline-sm" style="margin-bottom: 14px;">Has superado las 15 oleadas y vencido al Primer Wanted: Buggy el Payaso.</p>
+          <div style="background: rgba(27,58,107,0.85); border: 2px solid #C8A951; border-radius: 12px; padding: 10px 20px; margin-bottom: 20px; text-align: center;">
+            <div style="font-size: 13px; color: #F5C518; font-weight: 800;">RECOMPENSAS DESBLOQUEADAS</div>
+            <div id="victory-reward-text" style="font-size: 14px; font-weight: 700; margin-top: 4px;">+5% Daño Base Permanente</div>
+          </div>
+          <button id="btn-play-again" class="btn-3d btn-gold text-outline-sm" style="padding: 16px 44px; font-size: 20px;">JUGAR DE NUEVO</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

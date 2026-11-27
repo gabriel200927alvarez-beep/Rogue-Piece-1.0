@@ -1,0 +1,36 @@
+name: Release Game Version
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install
+      - name: Run tests and lint
+        run: |
+          npx tsx --test src/game/rules.test.ts
+          npm run lint
+      - name: Build production bundle
+        run: npm run build
+      - name: Package versioned HTML artifact
+        run: cp dist/index.html "rogue-piece-${GITHUB_REF_NAME}.html"
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            rogue-piece-${{ github.ref_name }}.html
